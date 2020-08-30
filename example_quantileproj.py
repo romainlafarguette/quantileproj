@@ -2,7 +2,7 @@
 """
 Example file for the quantile local projection module
 Romain Lafarguette, IMF, https://github.com/romainlafarguette
-Time-stamp: "2020-08-30 18:37:02 Romain"
+Time-stamp: "2020-08-30 18:42:50 Romain"
 """
 
 ###############################################################################
@@ -67,40 +67,6 @@ qr_proj = qr_fit.proj(cond_frame)
 self = qr_proj
 
 
-def cond_quantile(quantile=0.5, title=None,
-                  ylabel='', legendfont=None, legendloc='best'):
-
-    # Prepare the frame
-    assert quantile in self.quantile_l, 'quantile not in quantile list'
-    dcq = self.cond_quant.loc[self.cond_quant.tau==quantile, :].copy()
-
-    # Plot
-    fig, ax = plt.subplots()
-
-    # Line
-    ax.plot(dcq['horizon'], dcq['conditional_quantile_mean'],
-            label=f'Conditional {100*quantile:.0f} quantile', lw=4, color='navy')
-    ax.plot(dcq['horizon'], dcq['conditional_quantile_mean_ci_lower'],
-            ls='--', label='Lower confidence interval', color='navy')
-    ax.plot(dcq['horizon'], dcq['conditional_quantile_mean_ci_upper'],
-            ls='--', label='Upper confidence interval', color='navy')
-
-    # Area
-    ax.fill_between(dcq['horizon'],
-                    dcq['conditional_quantile_mean_ci_lower'],
-                    dcq['conditional_quantile_mean_ci_upper'], 
-                    alpha=0.15, color='dodgerblue')
-
-    # Layout
-    ax.legend(framealpha=0, loc=legend_loc, fontsize=legendfont)
-    ax.set_xlabel('Horizon', labelpad=20)
-    ax.set_ylabel(ylabel, labelpad=20)
-
-    title = title or (f'Conditional {100*quantile:.0f}th quantile '
-                      'over forecasting horizon')
-    ax.set_title(title, y=1.02)
-
-    return(fig)
 
 
 
