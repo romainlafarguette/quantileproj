@@ -2,7 +2,7 @@
 """
 Example file for the quantile local projection module
 Romain Lafarguette, IMF, https://github.com/romainlafarguette
-Time-stamp: "2020-08-30 01:50:37 Romain"
+Time-stamp: "2020-08-30 13:23:58 Romain"
 """
 
 ###############################################################################
@@ -34,7 +34,7 @@ horizon_l = [1, 2, 4, 8, 12] # 1Q - 2Q, 1Y, 2Y, 3Y for quarterly data
 df = sm.datasets.macrodata.load_pandas().data.copy()
 
 # Create a date index with end of quarter convention
-dates_l = [f'{y:.0f}-{q:.0f}' for y,q in zip(df['year'], df['quarter'])]
+dates_l = [f'{y:.0f}-Q{q:.0f}' for y,q in zip(df['year'], df['quarter'])]
 df = df.set_index(pd.to_datetime(dates_l) + pd.offsets.QuarterEnd())
 
 # Clean some variables
@@ -47,12 +47,30 @@ df = df.rename(columns={'infl':'inflation', 'unemp':'unemployment'})
 import quantileproj; importlib.reload(quantileproj)     # Quantile projections
 from quantileproj import QuantileProj
 
-qr = QuantileProj('inflation', ['rgdp_growth', 'unemployment'], df, horizon_l)
+
+dependent = 'inflation'
+regressors_l = ['rgdp_growth', 'unemployment', 'realint']
+
+qr = QuantileProj(dependent, regressors_l, df, horizon_l)
 
 qr_fit = qr.fit(quantile_l=quantile_l, alpha=0.05)
 
+#%%
 
-qr_fit.coeffs
+# Design a conditioning vector (here last observation for instance)
+cond_frame = df.loc[[max(df.index)], regressors_l].copy()
+
+
+qr_fit.proj(cond_frame)
+
+
+#%%
+
+cond_frame
+
+
+qr_fit.proj(cond_frame).proj_condquant
+
 
 
 
