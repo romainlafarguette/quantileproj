@@ -1,13 +1,17 @@
 # Local Quantile Projections
 
-Python wrapper to estimate local quantile projections, and produce useful outputs for economists
+Python module to estimate local quantile projections, and produce useful outputs for economists
 
 Based on the QuantileReg package from statsmodels
 
-Author: Romain Lafarguette, International Monetary Fund, August 2020
+Based on my conditional quantile sampling module (https://github.com/romainlafarguette/cqsampling)
 
-**Reuse of this  tool and  IMF data  does not  imply any  endorsement of  the
-research  and/or product.  Any research  presented should  not be  reported as
-representing  the   views  of  the   IMF,  its  Executive  Board,   or  member
-governments.**
+The quantile uncrossing part is based on either:
+
+Chernozhukov et al. (2010) /Quantile and Probability Curves Without Crossing/, Econometrica
+
+Schmidt and Zhu (2016), /Quantile Spacings: A Simple Method for the Joint Estimation of Multiple Quantiles Without Crossing/
+
+Author: Romain Lafarguette, https://github.com/romainlafarguette, August 2020
+
 
