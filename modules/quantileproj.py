@@ -2,7 +2,7 @@
 """
 Quantiles Local Projections Wrapper
 rlafarguette@imf.org
-Time-stamp: "2020-08-30 17:31:56 Romain"
+Time-stamp: "2020-08-30 18:38:48 Romain"
 """
 
 ###############################################################################
@@ -163,7 +163,8 @@ class QuantileFit(object): # Fit class for the QuantileProj class
         self.__quantilefit_unittest(quantile_l, alpha) # Unit tests input
 
         # Attributes
-        self.quantile_l = sorted(quantile_l)
+        # Avoid floating point issue
+        self.quantile_l = sorted([round(x,3) for x in quantile_l])
         self.alpha = alpha
 
         self.qfit_l = self.__qfit_l() # Return the fit of the qreg
@@ -266,6 +267,12 @@ class QuantileProjection(object): # Projection class for the fit class
         # Attributes
         self.cond_frame = cond_frame
         self.cond_quant = self.__proj_cond_quant()
+        self.dsample = self.sample()
+        
+        # Class-attributes (attributes from a class defined below)
+        """ Plot the output of the projection """
+        self.plot = QuantileProjectionPlot(self)
+
         
     # Methods    
     def sample(self, len_sample=1000, method='linear', len_bs=1000, seed=None):
@@ -309,7 +316,8 @@ class QuantileProjection(object): # Projection class for the fit class
 
             dc_l.append(dc) # Append to the container
 
-        dcq = pd.concat(dc_l)
+        dcq = pd.concat(dc_l).reset_index(drop=True).copy()
+        dcq = dcq.set_index(['horizon', 'tau'], drop=False).copy()
         return(dcq)
             
            
@@ -326,7 +334,6 @@ class QuantileProjection(object): # Projection class for the fit class
         assert len(mv_l)==0, f'{mv_l} not in conditioning frame columns'
 
 
-
 ###############################################################################
 #%% Plot class for the projection
 ###############################################################################
@@ -334,22 +341,107 @@ class QuantileProjectionPlot(object): # Plot class for the projection class
 
     """ 
     Plot the output of the different projections
-
-    Inputs
-    ------
-    cond_vector: Conditioning vector
-                  
     """
 
-
     # Import from QuantileProj class
-    def __init__(self, QuantileFit, cond_frame):
-        self.__dict__.update(QuantileFit.__dict__) # Pass all attributes      
-        self.__quantileproj_unittest(cond_frame) # Unit tests input
-        
-        # Attributes
-        self.cond_frame = cond_frame
-        self.cond_quant = self.__proj_cond_quant()
+    def __init__(self, QuantileProjection):
+        self.__dict__.update(QuantileProjection.__dict__) # Pass all attributes
+
+                
+    # Methods
+    def fitted_quantile(self, quantile=0.5, title=None,
+                        ylabel='', legendfont=None, legendloc='best'):
+
+        # Prepare the frame
+        assert quantile in self.quantile_l, 'quantile not in quantile list'
+        dcq = self.cond_quant.loc[self.cond_quant.tau==quantile, :].copy()
+
+        # Plot
+        fig, ax = plt.subplots()
+
+        # Line
+        ax.plot(dcq['horizon'], dcq['conditional_quantile_mean'],
+                label=f'Conditional {100*quantile:.0f} quantile',
+                lw=4, color='navy')
+        ax.plot(dcq['horizon'], dcq['conditional_quantile_mean_ci_lower'],
+                ls='--', label='Lower confidence interval', color='navy')
+        ax.plot(dcq['horizon'], dcq['conditional_quantile_mean_ci_upper'],
+                ls='--', label='Upper confidence interval', color='navy')
+
+        # Area
+        ax.fill_between(dcq['horizon'],
+                        dcq['conditional_quantile_mean_ci_lower'],
+                        dcq['conditional_quantile_mean_ci_upper'], 
+                        alpha=0.15, color='dodgerblue')
+
+        # Layout
+        ax.legend(framealpha=0, loc=legendloc, fontsize=legendfont)
+        ax.set_xlabel('Horizon', labelpad=20)
+        ax.set_ylabel(ylabel, labelpad=20)
+
+        title = title or (f'Conditional {100*quantile:.0f}th quantile '
+                          'over forecasting horizon')
+        ax.set_title(title, y=1.02)
+
+        return(fig)
+
+
+    
+    def fan_chart(self, ylabel='',
+                  title=f'Fan chart at different horizons',
+                  legendloc='best', legendfont=None):
+
+        # Use the standard sample
+        dsample = self.dsample
+
+        # Compute the statistics of interest
+        tau_l = [0.05, 0.25, 0.5, 0.75, 0.95]
+
+        dss = dsample.groupby(['horizon'])[self.depvar].quantile(tau_l)
+
+        dss = dss.reset_index().copy()
+        dss.columns = ['horizon', 'tau', self.depvar]
+        dss = dss.set_index(['horizon'])
+
+        # Plot
+        fig, ax = plt.subplots()
+
+        # Lines
+        ax.plot(dss.loc[dss.tau==0.05, self.depvar],
+                label='5%', lw=3, color='red', ls=':')
+        ax.plot(dss.loc[dss.tau==0.25, self.depvar],
+                label='25%', lw=2, color='black', ls='--')
+        ax.plot(dss.loc[dss.tau==0.50, self.depvar],
+                label='Median', lw=3, color='black')
+        ax.plot(dss.loc[dss.tau==0.75, self.depvar],
+                label='75%', lw=2, color='black', ls='--')
+        ax.plot(dss.loc[dss.tau==0.95, self.depvar],
+                label='95%', lw=3, color='red', ls=':')
+
+        # Area
+        ax.fill_between(dss.loc[dss.tau==0.05, self.depvar].index,
+                        dss.loc[dss.tau==0.05, self.depvar],
+                        dss.loc[dss.tau==0.25, self.depvar],
+                        alpha=0.35, color='red')
+
+        ax.fill_between(dss.loc[dss.tau==0.25, self.depvar].index,
+                        dss.loc[dss.tau==0.25, self.depvar],
+                        dss.loc[dss.tau==0.75, self.depvar],
+                        alpha=0.75, color='red')
+
+        ax.fill_between(dss.loc[dss.tau==0.75, self.depvar].index,
+                        dss.loc[dss.tau==0.75, self.depvar],
+                        dss.loc[dss.tau==0.95, self.depvar],
+                        alpha=0.35, color='red')
+
+        # Layout
+        ax.legend(framealpha=0, loc=legendloc, ncol=3, fontsize=legendfont)
+        ax.set_xlabel('Horizon', labelpad=20)
+        ax.set_ylabel(ylabel, labelpad=20)
+        ax.set_title(title, y=1.02)
+
+        return(fig)
+
 
         
 ###############################################################################
