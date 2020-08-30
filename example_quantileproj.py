@@ -2,7 +2,7 @@
 """
 Example file for the quantile local projection module
 Romain Lafarguette, IMF, https://github.com/romainlafarguette
-Time-stamp: "2020-08-30 13:23:58 Romain"
+Time-stamp: "2020-08-30 17:31:18 Romain"
 """
 
 ###############################################################################
@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns                                   
 
 # Local modules
+sys.path.append(os.path.abspath('modules'))             # Executable path
 import quantileproj; importlib.reload(quantileproj)     # Quantile projections
 from quantileproj import QuantileProj
 
@@ -55,24 +56,86 @@ qr = QuantileProj(dependent, regressors_l, df, horizon_l)
 
 qr_fit = qr.fit(quantile_l=quantile_l, alpha=0.05)
 
-#%%
-
 # Design a conditioning vector (here last observation for instance)
 cond_frame = df.loc[[max(df.index)], regressors_l].copy()
 
-
-qr_fit.proj(cond_frame)
-
-
-#%%
-
-cond_frame
-
-
-qr_fit.proj(cond_frame).proj_condquant
+qr_proj = qr_fit.proj(cond_frame)
 
 
 
+#%% Generate the plots 
+self = qr_proj
+
+
+ylabel = 'percentage points'
+title = f'Fan chart of {self.depvar} for different horizons'
+legend_loc='best'
+    
+# Graphic on the conditional quantiles
+dsample = self.sample()
+
+# Compute the statistics of interest
+tau_l = [0.05, 0.25, 0.5, 0.75, 0.95]
+
+dss = dsample.groupby(['horizon'])[self.depvar].quantile(tau_l)
+
+dss = dss.reset_index().copy()
+dss.columns = ['horizon', 'tau', self.depvar]
+dss = dss.set_index(['horizon'])
+
+
+
+fig, ax = plt.subplots()
+
+ax.plot(dss.loc[dss.tau==0.05, self.depvar],
+        label='5%', lw=3, color='red', ls=':')
+ax.plot(dss.loc[dss.tau==0.25, self.depvar],
+        label='25%', lw=2, color='black', ls='--')
+ax.plot(dss.loc[dss.tau==0.50, self.depvar],
+        label='Median', lw=2, color='black')
+ax.plot(dss.loc[dss.tau==0.75, self.depvar],
+        label='75%', lw=2, color='black', ls='--')
+ax.plot(dss.loc[dss.tau==0.95, self.depvar],
+        label='95%', lw=3, color='red', ls=':')
+
+ax.fill_between(dss.loc[dss.tau==0.05, self.depvar].index,
+                dss.loc[dss.tau==0.05, self.depvar],
+                dss.loc[dss.tau==0.25, self.depvar],
+                alpha=0.35, color='red')
+
+ax.fill_between(dss.loc[dss.tau==0.25, self.depvar].index,
+                dss.loc[dss.tau==0.25, self.depvar],
+                dss.loc[dss.tau==0.75, self.depvar],
+                alpha=0.75, color='red')
+
+ax.fill_between(dss.loc[dss.tau==0.75, self.depvar].index,
+                dss.loc[dss.tau==0.75, self.depvar],
+                dss.loc[dss.tau==0.95, self.depvar],
+                alpha=0.35, color='red')
+
+ax.legend(framealpha=0, loc=legend_loc)
+ax.set_xlabel('Horizon', labelpad=20)
+ax.set_ylabel(ylabel, labelpad=20)
+ax.set_title(title, y=1.02)
+
+return(fig)
+
+
+# Sampled fan chart
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
 
 
