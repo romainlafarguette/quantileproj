@@ -2,7 +2,7 @@
 """
 Quantiles Local Projections Wrapper
 rlafarguette@imf.org
-Time-stamp: "2020-08-30 18:38:48 Romain"
+Time-stamp: "2020-08-30 19:11:22 Romain"
 """
 
 ###############################################################################
@@ -169,7 +169,12 @@ class QuantileFit(object): # Fit class for the QuantileProj class
 
         self.qfit_l = self.__qfit_l() # Return the fit of the qreg
         self.coeffs = self.__coeffs() # Very important: all the coefficients
-                              
+
+
+        # Class-attributes (attributes from a class defined below)
+        """ Plot the output of the fit """
+        self.plot = QuantileFitPlot(self)
+        
     def __qfit_l(self): 
         """ Fit a quantile regression at every quantile and horizon """
 
@@ -267,12 +272,11 @@ class QuantileProjection(object): # Projection class for the fit class
         # Attributes
         self.cond_frame = cond_frame
         self.cond_quant = self.__proj_cond_quant()
-        self.dsample = self.sample()
+        self.sample = self.sample # To have it as attribute for the plot class
         
         # Class-attributes (attributes from a class defined below)
         """ Plot the output of the projection """
         self.plot = QuantileProjectionPlot(self)
-
         
     # Methods    
     def sample(self, len_sample=1000, method='linear', len_bs=1000, seed=None):
@@ -335,6 +339,115 @@ class QuantileProjection(object): # Projection class for the fit class
 
 
 ###############################################################################
+#%% Plot class for the QuantileFit class
+###############################################################################
+class QuantileFitPlot(object): # Plot class for the fit class
+
+    """ 
+    Plot the output of the different projections
+    """
+
+    # Import from QuantileProj class
+    def __init__(self, QuantileFit):
+        self.__dict__.update(QuantileFit.__dict__) # Pass all attributes
+
+
+    # Methods    
+    def coeffs_grid(self, horizon, title=None, num_cols=3, 
+                     label_d={}, **kwds):
+        """ 
+        Plot the coefficients with confidence interval and R2 
+
+        Parameters
+        -----------        
+        horizon: int
+          Coefficients for the quantiles at a given horizon
+
+        title: str, default 'Quantile Coefficients and Pseudo R2' 
+          Sup title of the plot
+
+        num_cols: int, default 3
+          Number of columns, number of rows adjusts automatically
+
+        label_d: dict, default empty
+          Label dictionary to replace the subplots caption selectively
+
+        """
+
+        assert horizon in self.horizon_l, 'Horizon not in horizon list'
+        
+        # List of regressors
+        var_l = ['Intercept'] + self.indvar_l
+        total_plots = len(var_l) + 1 # add R2 square 
+
+        # Compute the number of rows required
+        num_rows = total_plots // num_cols
+
+        if total_plots % num_cols >0:
+            num_rows += 1 # Add one row if residuals charts
+                
+        # Line plot
+        dc = self.coeffs.loc[self.coeffs['horizon']==horizon, :].copy()
+
+        # Create the main figure
+        fig, axs = plt.subplots(nrows=num_rows, ncols=num_cols)
+
+        axs = axs.ravel() # Very helpful !!
+
+        # In case, customize the labels for the plots
+        label_l = [None] * len(var_l)
+        
+        # Replace the values in list with labels_d
+        for idx, var in enumerate(var_l):
+            if var in label_d.keys():
+                label_l[idx] = label_d[var]
+            else:
+                label_l[idx] = var
+                               
+        # Add every single subplot to the figure with a for loop
+        for i, var in enumerate(var_l):
+            
+          # Select the data 
+          dcv = dc.loc[var, :].sort_values(by='tau')
+          dcv['tau'] = 100*dcv['tau'].copy() # For readibility
+          
+          # Main frame
+          axs[i].plot(dcv.tau, dcv.coeff, lw=3, color='navy')
+          axs[i].plot(dcv.tau, dcv.upper_ci, ls='--', color='blue')
+          axs[i].plot(dcv.tau, dcv.lower_ci, ls='--', color='blue')
+
+          # Fill in-between
+          x = [float(x) for x in dcv.tau.values]
+          u = [float(x) for x in dcv.lower_ci.values]
+          l = [float(x) for x in dcv.upper_ci.values]
+
+          axs[i].fill_between(x, u, l, facecolor='blue', alpha=0.05)
+
+          # Hline
+          axs[i].axhline(y=0, color='black', lw=0.8)
+
+          # Caption
+          axs[i].set_title(f'{label_l[i]}', y=1.02)
+
+        # R2 plot
+        dr2 = dc.loc['Intercept', :].sort_values(by='tau').copy()
+        axs[len(var_l)].plot(100*dr2['tau'], dr2['pseudo_r2'].values,
+                             lw=3, color='firebrick')
+        axs[len(var_l)].set_title('Pseudo R2', y=1.02)
+          
+        # Remove extra charts
+        for i in range(len(var_l) + 1, len(axs)): 
+            axs[i].set_visible(False) # to remove last plot
+
+        ttl = title or (f'Quantile coefficients at horizon {horizon} '
+                        f'at {100*self.alpha:.0f}% confidence')    
+        fig.suptitle(ttl)
+        
+        # Return both
+        return(fig)
+
+                
+###############################################################################
 #%% Plot class for the projection
 ###############################################################################
 class QuantileProjectionPlot(object): # Plot class for the projection class
@@ -385,15 +498,17 @@ class QuantileProjectionPlot(object): # Plot class for the projection class
 
         return(fig)
 
-
     
     def fan_chart(self, ylabel='',
                   title=f'Fan chart at different horizons',
-                  legendloc='best', legendfont=None):
+                  legendloc='best', legendfont=None,
+                  len_sample=1000, method='linear', len_bs=1000,
+                  seed=None):
 
         # Use the standard sample
-        dsample = self.dsample
-
+        dsample = self.sample(len_sample=len_sample, method=method,
+                              len_bs=len_bs, seed=seed)
+                
         # Compute the statistics of interest
         tau_l = [0.05, 0.25, 0.5, 0.75, 0.95]
 
@@ -442,109 +557,4 @@ class QuantileProjectionPlot(object): # Plot class for the projection class
 
         return(fig)
 
-
-        
-###############################################################################
-#%% Plot class for the quantile fit
-###############################################################################
-
-    
-    # def plot_coeffs(self, title=None, num_cols=3, 
-    #                 hspace=0.4, wspace=0.2,
-    #                 label_d={},
-    #                 fig_height=25, fig_width=15, **kwds):
-    #     """ 
-    #     Plot the coefficients with confidence interval and R2 
-
-    #     Parameters
-    #     -----------        
-    #     title: str, default 'Quantile Coefficients and Pseudo R2' 
-    #       Sup title of the plot
-
-    #     num_cols: int, default 3
-    #       Number of columns, number of rows adjusts automatically
-
-    #     fontscale: float, default 2
-    #       Increase the font in the chart (sns.style option)
-
-    #     hspace, wspace: float between 0 and 1, default 0.4 and 0.2
-    #       Increase or reduce space between subplots (horizontal, vertical)
-
-    #     label_d: dict, default empty
-    #       Label dictionary to replace the subplots caption selectively
-
-    #     """        
-    #     # List of regressors
-    #     var_l = ['Intercept'] + self.regressors
-    #     total_plots = len(var_l) + 1 # add R2 square 
-
-    #     # Compute the number of rows required
-    #     num_rows = total_plots // num_cols
-
-    #     if total_plots % num_cols >0:
-    #         num_rows += 1 # Add one row if residuals charts
-                
-    #     # Line plot
-    #     dc = self.coeff.loc[self.coeff.tau != 'mean', :].copy()
-
-    #     # Create the main figure
-    #     fig, axs = plt.subplots(nrows=num_rows, ncols=num_cols)
-
-    #     axs = axs.ravel() # Very helpful !!
-
-    #     # In case, customize the labels for the plots
-    #     label_l = [None] * len(var_l)
-        
-    #     # Replace the values in list with labels_d
-    #     for idx, var in enumerate(var_l):
-    #         if var in label_d.keys():
-    #             label_l[idx] = label_d[var]
-    #         else:
-    #             label_l[idx] = var
-                               
-    #     # Add every single subplot to the figure with a for loop
-    #     for i, var in enumerate(var_l):
-            
-    #       # Select the data 
-    #       dcv = dc.loc[var, :].sort_values(by='tau')
-    #       dcv['tau'] = 100*dcv['tau'].copy() # For readibility
-          
-    #       # Main frame
-    #       axs[i].plot(dcv.tau, dcv.coeff, lw=3, color='navy')
-    #       axs[i].plot(dcv.tau, dcv.upper, ls='--', color='blue')
-    #       axs[i].plot(dcv.tau, dcv.lower, ls='--', color='blue')
-
-    #       # Fill in-between
-    #       x = [float(x) for x in dcv.tau.values]
-    #       u = [float(x) for x in dcv.lower.values]
-    #       l = [float(x) for x in dcv.upper.values]
-
-    #       axs[i].fill_between(x, u, l, facecolor='blue', alpha=0.05)
-
-    #       # Hline
-    #       axs[i].axhline(y=0, color='black', lw=0.8)
-
-    #       # Caption
-    #       axs[i].set_title(f'{label_l[i]}', y=1.02)
-
-    #     # R2 plot
-    #     dr2 = dc.loc['Intercept', :].sort_values(by='tau').copy()
-    #     axs[len(var_l)].plot(100*dr2['tau'], dr2['R2_in_sample'].values,
-    #                          lw=3, color='firebrick')
-    #     axs[len(var_l)].set_title('Pseudo R2', y=1.02)
-          
-    #     # Remove extra charts
-    #     for i in range(len(var_l) + 1, len(axs)): 
-    #         axs[i].set_visible(False) # to remove last plot
-
-    #     if title: fig.suptitle(title, y=1.02)
-
-    #     plt.subplots_adjust(hspace=hspace, wspace=wspace)
-
-    #     # Layout
-    #     fig.set_size_inches(fig_height, fig_width)
-    #     fig.tight_layout()
-        
-    #     # Return both
-    #     return(fig)
         
