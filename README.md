@@ -17,3 +17,9 @@ Schmidt and Zhu (2016), Quantile Spacings: A Simple Method for the Joint Estimat
 Author: Romain Lafarguette, https://github.com/romainlafarguette, August 2020
 
 
+Work in progress. To be done:
+- Term structure
+- Normalized coefficients via zscore
+- Bootstrapped se on the uncrossed ITS 
+
+
