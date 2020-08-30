@@ -1,5 +1,7 @@
 # Local Quantile Projections
+
 Python wrapper to estimate local quantile projections, and produce useful outputs for economists
+
 Based on the QuantileReg package from statsmodels
 
 Author: Romain Lafarguette, International Monetary Fund, August 2020
