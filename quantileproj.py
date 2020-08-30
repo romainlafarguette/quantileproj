@@ -2,7 +2,7 @@
 """
 Quantiles Local Projections Wrapper
 rlafarguette@imf.org
-Time-stamp: "2020-08-30 01:51:29 Romain"
+Time-stamp: "2020-08-30 13:23:30 Romain"
 """
 
 ###############################################################################
@@ -41,7 +41,7 @@ def zscore(series):
     return((series - series.mean())/series.std(ddof=0))
 
 ###############################################################################
-#%% Class for the quantile projections
+#%% Parent class for the quantile projections
 ###############################################################################
 class QuantileProj(object):
     """ 
@@ -67,7 +67,7 @@ class QuantileProj(object):
                  horizon_l=[0], ):
 
         # Unit tests (defined at the bottom of the class)
-        self.__quantilereg_unittest(depvar, indvar_l, data, horizon_l)
+        self.__quantilemod_unittest(depvar, indvar_l, data, horizon_l)
     
         # Attributes
         self.depvar = depvar # Dependent variable
@@ -113,7 +113,7 @@ class QuantileProj(object):
         reg_f = f'{ldepvar} ~ {regressors_l}'
         return(reg_f)
     
-    def __quantilereg_unittest(self, depvar, indvar_l, data, horizon_l):
+    def __quantilemod_unittest(self, depvar, indvar_l, data, horizon_l):
         """ Unit testing on the inputs """
         # Test for types
         assert isinstance(depvar, str), 'depvar should be string'
@@ -162,18 +162,7 @@ class QuantileFit(object): # Fit class for the QuantileProj class
 
         self.qfit_l = self.__qfit_l() # Return the fit of the qreg
         self.coeffs = self.__coeffs() # Very important: all the coefficients
-                      
-    # Methods    
-    def __quantilefit_unittest(self, quantile_l, alpha):
-        """ Unit testing on the inputs """
-        # Test for types
-        assert isinstance(quantile_l, list), 'quantiles should be in list'
-
-        # Test boundaries
-        assert (0 < alpha < 1), 'level of confidence should be in (0,1)'
-        for quantile in quantile_l:
-            assert (0 < quantile < 1), 'quantile should be in (0,1)'
-        
+                              
     def __qfit_l(self): 
         """ Fit a quantile regression at every quantile and horizon """
 
@@ -201,6 +190,13 @@ class QuantileFit(object): # Fit class for the QuantileProj class
         
         return(qfit_l)
 
+
+    # Class-methods (methods which returns a class defined below)    
+    def proj(self, cond_vector):
+        """ Project quantiles based on a conditioning vector """
+        return(QuantileProjection(self, cond_vector))
+
+    
     def __coeffs(self):
         """ Create the frame of coefficients from all the quantile fit """
 
@@ -226,9 +222,88 @@ class QuantileFit(object): # Fit class for the QuantileProj class
         # Concatenate all the frames to have a summary coefficients frame
         coeffs = pd.concat(depvar_frames_l)
         return(coeffs)
+
+
+    # Unit tests
+    def __quantilefit_unittest(self, quantile_l, alpha):
+        """ Unit testing on the inputs """
+        # Test for types
+        assert isinstance(quantile_l, list), 'quantiles should be in list'
+
+        # Test boundaries
+        assert (0 < alpha < 1), 'level of confidence should be in (0,1)'
+        for quantile in quantile_l:
+            assert (0 < quantile < 1), 'quantile should be in (0,1)'
+
+    
+
+###############################################################################
+#%% Projection class for the quantile fit class
+###############################################################################
+class QuantileProjection(object): # Projection class for the fit class
+
+    """ 
+    Project for a given conditioning vector
+
+    Inputs
+    ------
+    cond_vector: Conditioning vector
+                  
+    """
+
+
+    # Import from QuantileProj class
+    def __init__(self, QuantileFit, cond_frame):
+        self.__dict__.update(QuantileFit.__dict__) # Pass all attributes      
+        self.__quantileproj_unittest(cond_frame) # Unit tests input
+        
+        # Attributes
+        self.cond_frame = cond_frame
+
+        self.proj_condquant = self.__proj_cond_quant()
+
+
+    def __proj_cond_quant(self):
+        """ Project the conditional quantiles """
+        
+        dc_l = list() # Container
+        for qf in self.qfit_l:
+            qfit = qf.qfit
+            dc = qfit.get_prediction(exog=self.cond_frame).summary_frame()
+            dc.columns = ['conditional_quantile_' + x for x in dc.columns]
+            dc = dc.set_index(self.cond_frame.index)
+
+            # Add extra information
+            dc.insert(0, 'tau', qf.tau)
+            dc.insert(1, 'horizon', qf.horizon)
+
+            dc_l.append(dc) # Append to the container
+
+        dcq = pd.concat(dc_l)
+        return(dcq)
             
 
+        
 
+        
+    # Unit tests
+    def __quantileproj_unittest(self, cond_frame):
+        """ Unit testing for the projection class """
+
+        # Type testing
+        c = isinstance(cond_frame, pd.DataFrame)
+        assert c, 'cond_frame should be a pd.DataFrame with var in columns'
+
+        # Test if the conditioning vector contains the independent variables
+        mv_l = [x for x in self.indvar_l if x not in cond_frame.columns]
+        assert len(mv_l)==0, f'{mv_l} not in conditioning frame columns'
+
+        
+
+
+
+
+    
 ###############################################################################
 #%% Plot class for the quantile fit
 ###############################################################################
