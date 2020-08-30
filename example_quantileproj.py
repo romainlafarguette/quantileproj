@@ -2,7 +2,7 @@
 """
 Example file for the quantile local projection module
 Romain Lafarguette, IMF, https://github.com/romainlafarguette
-Time-stamp: "2020-08-30 17:31:18 Romain"
+Time-stamp: "2020-08-30 18:37:02 Romain"
 """
 
 ###############################################################################
@@ -63,80 +63,46 @@ qr_proj = qr_fit.proj(cond_frame)
 
 
 
-#%% Generate the plots 
+#%% Generate the plots
 self = qr_proj
 
 
-ylabel = 'percentage points'
-title = f'Fan chart of {self.depvar} for different horizons'
-legend_loc='best'
-    
-# Graphic on the conditional quantiles
-dsample = self.sample()
+def cond_quantile(quantile=0.5, title=None,
+                  ylabel='', legendfont=None, legendloc='best'):
 
-# Compute the statistics of interest
-tau_l = [0.05, 0.25, 0.5, 0.75, 0.95]
+    # Prepare the frame
+    assert quantile in self.quantile_l, 'quantile not in quantile list'
+    dcq = self.cond_quant.loc[self.cond_quant.tau==quantile, :].copy()
 
-dss = dsample.groupby(['horizon'])[self.depvar].quantile(tau_l)
+    # Plot
+    fig, ax = plt.subplots()
 
-dss = dss.reset_index().copy()
-dss.columns = ['horizon', 'tau', self.depvar]
-dss = dss.set_index(['horizon'])
+    # Line
+    ax.plot(dcq['horizon'], dcq['conditional_quantile_mean'],
+            label=f'Conditional {100*quantile:.0f} quantile', lw=4, color='navy')
+    ax.plot(dcq['horizon'], dcq['conditional_quantile_mean_ci_lower'],
+            ls='--', label='Lower confidence interval', color='navy')
+    ax.plot(dcq['horizon'], dcq['conditional_quantile_mean_ci_upper'],
+            ls='--', label='Upper confidence interval', color='navy')
 
+    # Area
+    ax.fill_between(dcq['horizon'],
+                    dcq['conditional_quantile_mean_ci_lower'],
+                    dcq['conditional_quantile_mean_ci_upper'], 
+                    alpha=0.15, color='dodgerblue')
 
+    # Layout
+    ax.legend(framealpha=0, loc=legend_loc, fontsize=legendfont)
+    ax.set_xlabel('Horizon', labelpad=20)
+    ax.set_ylabel(ylabel, labelpad=20)
 
-fig, ax = plt.subplots()
+    title = title or (f'Conditional {100*quantile:.0f}th quantile '
+                      'over forecasting horizon')
+    ax.set_title(title, y=1.02)
 
-ax.plot(dss.loc[dss.tau==0.05, self.depvar],
-        label='5%', lw=3, color='red', ls=':')
-ax.plot(dss.loc[dss.tau==0.25, self.depvar],
-        label='25%', lw=2, color='black', ls='--')
-ax.plot(dss.loc[dss.tau==0.50, self.depvar],
-        label='Median', lw=2, color='black')
-ax.plot(dss.loc[dss.tau==0.75, self.depvar],
-        label='75%', lw=2, color='black', ls='--')
-ax.plot(dss.loc[dss.tau==0.95, self.depvar],
-        label='95%', lw=3, color='red', ls=':')
-
-ax.fill_between(dss.loc[dss.tau==0.05, self.depvar].index,
-                dss.loc[dss.tau==0.05, self.depvar],
-                dss.loc[dss.tau==0.25, self.depvar],
-                alpha=0.35, color='red')
-
-ax.fill_between(dss.loc[dss.tau==0.25, self.depvar].index,
-                dss.loc[dss.tau==0.25, self.depvar],
-                dss.loc[dss.tau==0.75, self.depvar],
-                alpha=0.75, color='red')
-
-ax.fill_between(dss.loc[dss.tau==0.75, self.depvar].index,
-                dss.loc[dss.tau==0.75, self.depvar],
-                dss.loc[dss.tau==0.95, self.depvar],
-                alpha=0.35, color='red')
-
-ax.legend(framealpha=0, loc=legend_loc)
-ax.set_xlabel('Horizon', labelpad=20)
-ax.set_ylabel(ylabel, labelpad=20)
-ax.set_title(title, y=1.02)
-
-return(fig)
-
-
-# Sampled fan chart
+    return(fig)
 
 
 
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
+#%%
 
