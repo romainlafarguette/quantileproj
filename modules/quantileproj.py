@@ -2,7 +2,7 @@
 """
 Quantiles Local Projections Wrapper
 rlafarguette@imf.org
-Time-stamp: "2020-08-30 19:11:22 Romain"
+Time-stamp: "2020-08-30 22:32:22 Romain"
 """
 
 ###############################################################################
@@ -446,6 +446,95 @@ class QuantileFitPlot(object): # Plot class for the fit class
         # Return both
         return(fig)
 
+
+    def term_structure(self, variable, title=None, num_cols=3, 
+                       label_d={}, **kwds):
+        """ 
+        Plot the the coefficients of a single variable across time
+
+        Parameters
+        -----------        
+        variable: str
+          Name of the variable to present the plot
+
+        title: str, default 'Quantile Coefficients and Pseudo R2' 
+          Sup title of the plot
+
+        num_cols: int, default 3
+          Number of columns, number of rows adjusts automatically
+
+        label_d: dict, default empty
+          Label dictionary to replace the subplots caption selectively
+
+        """
+
+        assert variable in self.indvar_l, 'Variable not in regressors list'
+        
+        # List of horizon
+        total_plots = len(self.horizon_l) 
+
+        # Compute the number of rows required
+        num_rows = total_plots // num_cols
+
+        if total_plots % num_cols >0:
+            num_rows += 1 # Add one row if residuals charts
+                
+        # Line plot
+        dc = self.coeffs.loc[variable, :].copy()
+
+        # Create the main figure
+        fig, axs = plt.subplots(nrows=num_rows, ncols=num_cols)
+
+        axs = axs.ravel() # Very helpful !!
+
+        # In case, customize the labels for the plots
+        label_l = [None] * len(self.indvar_l)
+        
+        # Replace the values in list with labels_d
+        for idx, var in enumerate(self.indvar_l):
+            if var in label_d.keys():
+                label_l[idx] = label_d[var]
+            else:
+                label_l[idx] = var
+                               
+        # Add every single subplot to the figure with a for loop
+        for i, horizon in enumerate(self.horizon_l):
+            
+          # Select the data 
+          dch = dc.loc[dc['horizon']==horizon, :].sort_values(by='tau')
+          dch['tau'] = 100*dch['tau'].copy() # For readibility
+          
+          # Main frame
+          axs[i].plot(dch.tau, dch.coeff, lw=3, color='navy')
+          axs[i].plot(dch.tau, dch.upper_ci, ls='--', color='blue')
+          axs[i].plot(dch.tau, dch.lower_ci, ls='--', color='blue')
+
+          # Fill in-between
+          x = [float(x) for x in dch.tau.values]
+          u = [float(x) for x in dch.lower_ci.values]
+          l = [float(x) for x in dch.upper_ci.values]
+
+          axs[i].fill_between(x, u, l, facecolor='blue', alpha=0.05)
+
+          # Hline
+          axs[i].axhline(y=0, color='black', lw=0.8)
+
+          # Caption
+          axs[i].set_title(f'Horizon {horizon}', y=1.02)
+          
+        # Remove extra charts
+        for i in range(len(self.horizon_l), len(axs)): 
+            axs[i].set_visible(False) # to remove last plot
+
+        ttl = title or (f'Quantile coefficients for {variable} '
+                        f'at different horizons, '
+                        f'at {100*self.alpha:.0f}% confidence')    
+        fig.suptitle(ttl)
+        
+        # Return both
+        return(fig)
+
+    
                 
 ###############################################################################
 #%% Plot class for the projection
