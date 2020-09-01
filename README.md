@@ -1,8 +1,8 @@
-# Local Quantile Projections
+# Quantile Local Projections
 
-Python module to estimate local quantile projections, and produce useful outputs for economists
+Python module to estimate quantile local projections, and produce useful outputs for economists
 
-The example notebook is available at https://github.com/romainlafarguette/local-quantile-projections/blob/master/Local%20Quantile%20Projections.ipynb
+The example notebook is available at https://github.com/romainlafarguette/quantile-local-projections/blob/master/Quantile%20Local%20Projections.ipynb
 
 Based on the QuantileReg package from statsmodels
 
