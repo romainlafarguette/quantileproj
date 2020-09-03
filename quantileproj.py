@@ -2,7 +2,7 @@
 """
 Quantiles Local Projections Wrapper
 rlafarguette@imf.org
-Time-stamp: "2020-08-31 10:44:58 Romain"
+Time-stamp: "2020-09-03 18:36:21 Romain"
 """
 
 ###############################################################################
@@ -23,9 +23,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Local packages
+sys.path.append(os.path.abspath('cqsampling'))          # Executable path
 import cqsampling; importlib.reload(cqsampling)         # Conditional Sampling
 from cqsampling import inv_transform
-
 
 # Warnings management
 # With many quantile regressions, the convergence warnings are overwhelming
