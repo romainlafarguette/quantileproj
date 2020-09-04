@@ -1,0 +1,13 @@
+# Git ignore file, Romain Lafarguette, https://github.com/romainlafarguette 
+
+# Ignore some folders
+__pycache__/
+.ipynb_checkpoints/
+
+# Ignore some extensions
+*.aux
+*.log
+
+# Ignore some files (put file name directy)
+sandbox.py
+
