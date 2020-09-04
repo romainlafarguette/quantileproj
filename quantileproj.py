@@ -2,7 +2,7 @@
 """
 Quantiles Local Projections Wrapper
 rlafarguette@imf.org
-Time-stamp: "2020-09-03 18:36:21 Romain"
+Time-stamp: "2020-09-04 17:26:31 Romain"
 """
 
 ###############################################################################
@@ -270,7 +270,7 @@ class QuantileProjection(object): # Projection class for the fit class
         self.__quantileproj_unittest(cond_frame) # Unit tests input
         
         # Attributes
-        self.cond_frame = cond_frame
+        self.cond_frame = cond_frame.reset_index().copy() # In case of mult dim
         self.cond_quant = self.__proj_cond_quant()
         self.sample = self.sample # To have it as attribute for the plot class
         
@@ -282,25 +282,30 @@ class QuantileProjection(object): # Projection class for the fit class
     def sample(self, len_sample=1000, method='linear', len_bs=1000, seed=None):
         """ Sample from the conditional quantiles """
         
-        dcq = self.cond_quant # Conditional quantile frame
+        dcq = self.cond_quant.copy() # Conditional quantile frame
         sample_frames_l = list() # Container
         for horizon in self.horizon_l:
-            # Generate dictionary of conditional quantiles per horizon
-            dcqh = dcq.loc[dcq.horizon==horizon, :].copy()
-            cq_d = {k:v for k,v in zip(dcqh['tau'],
-                                       dcqh['conditional_quantile_mean'])}
+            # Generate dictionary of conditional quantiles per horizon, sample
+            for condition in sorted(set(dcq['conditioning'])):
+                cond = ((dcq['horizon']==horizon) &
+                        (dcq['conditioning']==condition))
+                dcqh = dcq.loc[cond, :].copy()
+                cq_d = {k:v for k,v in zip(dcqh['tau'],
+                                           dcqh['conditional_quantile_mean'])}
 
-            # Inverse transform sampling
-            sample = inv_transform(cq_d, len_sample=len_sample,
-                                   method=method, len_bs=len_bs, seed=seed)
+                # Inverse transform sampling
+                sample = inv_transform(cq_d, len_sample=len_sample,
+                                       method=method, len_bs=len_bs, seed=seed)
 
-            # Package it nicely
-            ds = pd.DataFrame(sample, columns=[self.depvar])
-            ds.insert(0, 'horizon', horizon) # Add information
-            sample_frames_l.append(ds)
+                # Package it nicely
+                ds = pd.DataFrame(sample, columns=[self.depvar])
+                ds.insert(0, 'conditioning', condition) # Keep track
+                ds.insert(1, 'horizon', horizon) # Add information
+                sample_frames_l.append(ds)
 
         # Concatenate the frames    
         dsample = pd.concat(sample_frames_l)
+        dsample = dsample.sort_values(by=['conditioning', 'horizon']).copy()
         return(dsample)
 
         
@@ -315,13 +320,16 @@ class QuantileProjection(object): # Projection class for the fit class
             dc = dc.set_index(self.cond_frame.index)
 
             # Add extra information
-            dc.insert(0, 'tau', qf.tau)
+            dc.insert(0, 'conditioning', dc.index) # In case of mult dimension
             dc.insert(1, 'horizon', qf.horizon)
-
+            dc.insert(2, 'tau', qf.tau)
+            
             dc_l.append(dc) # Append to the container
 
         dcq = pd.concat(dc_l).reset_index(drop=True).copy()
-        dcq = dcq.set_index(['horizon', 'tau'], drop=False).copy()
+        dcq = dcq.sort_values(by=['conditioning', 'horizon', 'tau']).copy()
+        dcq = dcq.set_index(['conditioning', 'horizon', 'tau'],
+                            drop=False).copy()
         return(dcq)
             
            
