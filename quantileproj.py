@@ -2,7 +2,7 @@
 """
 Quantiles Local Projections Wrapper
 rlafarguette@imf.org
-Time-stamp: "2020-09-04 17:26:31 Romain"
+Time-stamp: "2020-09-08 22:44:31 Romain"
 """
 
 ###############################################################################
@@ -136,7 +136,7 @@ class QuantileProj(object):
             
         # Test for consistency
         mv_l = [x for x in [depvar] + indvar_l if x not in data.columns]
-        assert len(mv_l)==0, 'f{mv_l} are not in data columns'
+        assert len(mv_l)==0, f'{mv_l} are not in data columns'
 
 
 ###############################################################################
