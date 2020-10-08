@@ -23,8 +23,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Local packages
-sys.path.append(os.path.abspath('cqsampling'))          # Executable path
-import cqsampling; importlib.reload(cqsampling)         # Conditional Sampling
 from cqsampling import inv_transform
 
 # Warnings management
