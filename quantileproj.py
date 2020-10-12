@@ -2,7 +2,7 @@
 """
 Quantiles Local Projections Wrapper
 rlafarguette@imf.org
-Time-stamp: "2020-09-08 22:44:31 Romain"
+Time-stamp: "2020-10-12 17:08:39 Romain"
 """
 
 ###############################################################################
@@ -380,6 +380,7 @@ class QuantileFitPlot(object): # Plot class for the fit class
 
         """
 
+        assert isinstance(horizon, int), 'Horizon should be integer'
         assert horizon in self.horizon_l, 'Horizon not in horizon list'
         
         # List of regressors
