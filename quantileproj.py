@@ -2,7 +2,7 @@
 """
 Quantiles Local Projections Wrapper
 rlafarguette@imf.org
-Time-stamp: "2020-10-12 17:08:39 Romain"
+Time-stamp: "2020-10-15 20:23:54 Romain"
 """
 
 ###############################################################################
@@ -397,7 +397,7 @@ class QuantileFitPlot(object): # Plot class for the fit class
         dc = self.coeffs.loc[self.coeffs['horizon']==horizon, :].copy()
 
         # Create the main figure
-        fig, axs = plt.subplots(nrows=num_rows, ncols=num_cols)
+        fig, axs = plt.subplots(nrows=num_rows, ncols=num_cols, sharex=True)
 
         axs = axs.ravel() # Very helpful !!
 
